@@ -9,37 +9,69 @@ import aqua.blatt1.common.msgtypes.RegisterResponse;
 import messaging.Endpoint;
 import messaging.Message;
 
+import javax.swing.*;
 import java.net.InetSocketAddress;
-
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class Broker {
+
+    int NUMTHREADS = 5;
+    int count;
+    boolean stopRequested = false;
+    Endpoint endpoint = new Endpoint(4711);
+    ClientCollection client = new ClientCollection();
+    ExecutorService executor = Executors.newFixedThreadPool(NUMTHREADS);
+    ReadWriteLock lock = new ReentrantReadWriteLock( ) ;
+
+    private class BrokerTask {
+        public void brokerTask (Message msg) {
+            if (msg.getPayload() instanceof RegisterRequest) {
+               synchronized (client) {register(msg);}
+            }
+
+            if (msg.getPayload() instanceof DeregisterRequest) {
+                synchronized (client) {deregister(msg);}
+            }
+
+            lock.writeLock().lock();
+            if (msg.getPayload() instanceof HandoffRequest) {
+                lock.writeLock().lock();
+                HandoffRequest handoffRequest = (HandoffRequest) msg.getPayload();
+                InetSocketAddress inetSocketAddress = msg.getSender();
+                handOffFish(handoffRequest,inetSocketAddress);
+                lock.writeLock().unlock();
+            }
+        }
+    }
     public static void main(String[] args) {
         Broker broker = new Broker();
         broker.broker();
     }
 
-    Endpoint endpoint = new Endpoint(4711);
-    ClientCollection client = new ClientCollection();
-
     public void broker(){
-        boolean done = false;
-        while( !done ) {
-            Message msg = endpoint.blockingReceive();
-            if (msg.getPayload() instanceof RegisterRequest) {
-                register(msg);
-            }
 
-            if (msg.getPayload() instanceof DeregisterRequest) {
-                deregister(msg);
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                JFrame jFrame = new JFrame();
+                JOptionPane.showMessageDialog(jFrame,"Press OK button to stop server");
+                if (!jFrame.isActive()) {
+                    stopRequested=true;
+                }
             }
-            if (msg.getPayload() instanceof HandoffRequest) {
-                HandoffRequest handoffRequest = (HandoffRequest) msg.getPayload();
-                InetSocketAddress inetSocketAddress = msg.getSender();
-                handOffFish(handoffRequest,inetSocketAddress);
-            }
+        });
+
+        while( !stopRequested ) {
+            Message msg = endpoint.blockingReceive();
+            BrokerTask brokerTask = new BrokerTask();
+            executor.execute(() -> brokerTask.brokerTask(msg));
         }
     }
+
     private void register(Message msg) {
-        String id = "tank"+client.size();
+        String id = "tank"+(count++);
         client.add( id, msg.getSender());
         endpoint.send(msg.getSender(), new RegisterResponse(id));
     }
