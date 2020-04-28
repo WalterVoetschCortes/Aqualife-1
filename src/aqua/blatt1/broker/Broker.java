@@ -43,6 +43,9 @@ public class Broker {
                 handOffFish(handoffRequest,inetSocketAddress);
                 lock.writeLock().unlock();
             }
+            if (msg.getPayload() instanceof PoisonPill) {
+                System.exit(0);
+            }
         }
     }
     public static void main(String[] args) {
@@ -55,11 +58,8 @@ public class Broker {
         executor.execute(new Runnable() {
             @Override
             public void run() {
-                JFrame jFrame = new JFrame();
-                JOptionPane.showMessageDialog(jFrame,"Press OK button to stop server");
-                if (!jFrame.isActive()) {
-                    stopRequested=true;
-                }
+                JOptionPane.showMessageDialog(null,"Press OK button to stop server");
+                stopRequested=true;
             }
         });
 
