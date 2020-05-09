@@ -1,5 +1,6 @@
 package aqua.blatt1.client;
 
+import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Observable;
@@ -12,7 +13,8 @@ import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
 
 public class TankModel extends Observable implements Iterable<FishModel> {
-
+	public InetSocketAddress rightNeighbor;
+	public InetSocketAddress leftNeighbor;
 	public static final int WIDTH = 600;
 	public static final int HEIGHT = 350;
 	protected static final int MAX_FISHIES = 5;

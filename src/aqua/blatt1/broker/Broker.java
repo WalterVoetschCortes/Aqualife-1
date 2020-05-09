@@ -2,15 +2,13 @@ package aqua.blatt1.broker;
 
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
-import aqua.blatt1.common.msgtypes.DeregisterRequest;
-import aqua.blatt1.common.msgtypes.HandoffRequest;
-import aqua.blatt1.common.msgtypes.RegisterRequest;
-import aqua.blatt1.common.msgtypes.RegisterResponse;
+import aqua.blatt1.common.msgtypes.*;
 import messaging.Endpoint;
 import messaging.Message;
 
 import javax.swing.*;
 import java.net.InetSocketAddress;
+import java.sql.SQLOutput;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -71,13 +69,44 @@ public class Broker {
     }
 
     private void register(Message msg) {
+        InetSocketAddress inetSocketRight;
+        InetSocketAddress inetSocketLeft;
         String id = "tank"+(count++);
         client.add( id, msg.getSender());
+
+        inetSocketRight = (InetSocketAddress) client.getRightNeighorOf(client.indexOf(id));
+        inetSocketLeft = (InetSocketAddress) client.getLeftNeighorOf(client.indexOf(id));
+
         endpoint.send(msg.getSender(), new RegisterResponse(id));
+        endpoint.send(msg.getSender(), new NeighborUpdate(inetSocketRight, inetSocketLeft));
     }
 
     private void deregister(Message msg) {
-        client.remove(client.indexOf(((DeregisterRequest) msg.getPayload()).getId()));
+
+        String removeID = ((DeregisterRequest) msg.getPayload()).getId();
+        InetSocketAddress inetSocketRight;
+        InetSocketAddress inetSocketRightRigth;
+
+        InetSocketAddress inetSocketLeft;
+        InetSocketAddress inetSocketLeftLeft;
+
+        inetSocketRight = (InetSocketAddress) client.getRightNeighorOf(client.indexOf(removeID));
+        inetSocketLeft = (InetSocketAddress) client.getLeftNeighorOf(client.indexOf(removeID));
+
+        int indexRightNeighborOfRightNeighbor = client.indexOf(client.getRightNeighorOf(client.indexOf(removeID)));
+        inetSocketRightRigth = (InetSocketAddress) client.getRightNeighorOf(indexRightNeighborOfRightNeighbor);
+
+        int indexLeftNeighborOfLeftNeighbor = client.indexOf(client.getLeftNeighorOf(client.indexOf(removeID)));
+        inetSocketLeftLeft = (InetSocketAddress) client.getLeftNeighorOf(indexLeftNeighborOfLeftNeighbor);
+
+        System.out.println(inetSocketLeft);
+        System.out.println(inetSocketRight);
+        System.out.println(inetSocketLeftLeft);
+        System.out.println(inetSocketRightRigth);
+
+        endpoint.send(inetSocketRight, new NeighborUpdate(inetSocketRightRigth,inetSocketLeft));
+        endpoint.send(inetSocketLeft, new NeighborUpdate(inetSocketRight, inetSocketLeftLeft));
+        client.remove(client.indexOf(removeID));
     }
 
     private void handOffFish(HandoffRequest handoffRequest, InetSocketAddress inetSocketAddress) {
@@ -95,4 +124,5 @@ public class Broker {
 
         endpoint.send(neighborReceiver, handoffRequest);
     }
+
 }

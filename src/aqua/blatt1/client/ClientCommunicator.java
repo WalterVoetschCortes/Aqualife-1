@@ -2,14 +2,11 @@ package aqua.blatt1.client;
 
 import java.net.InetSocketAddress;
 
+import aqua.blatt1.common.msgtypes.*;
 import messaging.Endpoint;
 import messaging.Message;
 import aqua.blatt1.common.FishModel;
 import aqua.blatt1.common.Properties;
-import aqua.blatt1.common.msgtypes.DeregisterRequest;
-import aqua.blatt1.common.msgtypes.HandoffRequest;
-import aqua.blatt1.common.msgtypes.RegisterRequest;
-import aqua.blatt1.common.msgtypes.RegisterResponse;
 
 public class ClientCommunicator {
 	private final Endpoint endpoint;
@@ -55,6 +52,11 @@ public class ClientCommunicator {
 
 				if (msg.getPayload() instanceof HandoffRequest)
 					tankModel.receiveFish(((HandoffRequest) msg.getPayload()).getFish());
+
+				if (msg.getPayload() instanceof NeighborUpdate) {
+					tankModel.leftNeighbor = ((NeighborUpdate) msg.getPayload()).getAddressLeft();
+					tankModel.rightNeighbor = ((NeighborUpdate) msg.getPayload()).getAddressRight();
+				}
 
 			}
 			System.out.println("Receiver stopped.");
