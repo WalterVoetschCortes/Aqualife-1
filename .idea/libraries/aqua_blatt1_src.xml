@@ -1,8 +1,6 @@
 <component name="libraryTable">
   <library name="aqua-blatt1-src">
-    <CLASSES>
-      <root url="jar://$USER_HOME$/Desktop/VS_SS_2020/VS_jar_files/messaging.jar!/" />
-    </CLASSES>
+    <CLASSES />
     <JAVADOC>
       <root url="jar://$USER_HOME$/Desktop/VS_SS_2020/VS_jar_files/messaging-javadoc.jar!/messaging" />
     </JAVADOC>
