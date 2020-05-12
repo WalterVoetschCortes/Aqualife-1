@@ -13,8 +13,6 @@ import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
 
 public class TankModel extends Observable implements Iterable<FishModel> {
-	public InetSocketAddress rightNeighbor;
-	public InetSocketAddress leftNeighbor;
 	public static final int WIDTH = 600;
 	public static final int HEIGHT = 350;
 	protected static final int MAX_FISHIES = 5;
@@ -23,6 +21,8 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 	protected final Set<FishModel> fishies;
 	protected int fishCounter = 0;
 	protected final ClientCommunicator.ClientForwarder forwarder;
+	public InetSocketAddress rightNeighbor;
+	public InetSocketAddress leftNeighbor;
 
 	public TankModel(ClientCommunicator.ClientForwarder forwarder) {
 		this.fishies = Collections.newSetFromMap(new ConcurrentHashMap<FishModel, Boolean>());
@@ -70,7 +70,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 			fish.update();
 
 			if (fish.hitsEdge())
-				forwarder.handOff(fish);
+				forwarder.handOff(fish, rightNeighbor, leftNeighbor);
 
 			if (fish.disappears())
 				it.remove();
@@ -98,6 +98,11 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
 	public synchronized void finish() {
 		forwarder.deregister(id);
+	}
+
+	public void updateNeighbors(InetSocketAddress addressLeft, InetSocketAddress addressRight) {
+		this.leftNeighbor = addressLeft;
+		this.rightNeighbor = addressRight;
 	}
 
 }

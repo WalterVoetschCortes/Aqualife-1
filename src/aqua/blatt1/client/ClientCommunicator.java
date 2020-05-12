@@ -2,6 +2,7 @@ package aqua.blatt1.client;
 
 import java.net.InetSocketAddress;
 
+import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.msgtypes.*;
 import messaging.Endpoint;
 import messaging.Message;
@@ -30,8 +31,22 @@ public class ClientCommunicator {
 			endpoint.send(broker, new DeregisterRequest(id));
 		}
 
-		public void handOff(FishModel fish) {
-			endpoint.send(broker, new HandoffRequest(fish));
+		public void handOff(FishModel fish,InetSocketAddress rightneighbor, InetSocketAddress leftneighbor) {
+			Direction direction = fish.getDirection();
+			InetSocketAddress reveiverAdress;
+
+			if (direction == Direction.LEFT) {
+				reveiverAdress = leftneighbor;
+			}
+			else {
+				reveiverAdress = rightneighbor;
+			}
+
+			endpoint.send(reveiverAdress, new HandoffRequest(fish));
+
+			//endpoint.send(reveiverAdress, new HandoffRequest(fish));
+			//endpoint.send(broker, new HandoffRequest(fish));
+
 		}
 	}
 
@@ -54,8 +69,9 @@ public class ClientCommunicator {
 					tankModel.receiveFish(((HandoffRequest) msg.getPayload()).getFish());
 
 				if (msg.getPayload() instanceof NeighborUpdate) {
-					tankModel.leftNeighbor = ((NeighborUpdate) msg.getPayload()).getAddressLeft();
-					tankModel.rightNeighbor = ((NeighborUpdate) msg.getPayload()).getAddressRight();
+					//tankModel.leftNeighbor = ((NeighborUpdate) msg.getPayload()).getAddressLeft();
+					//tankModel.rightNeighbor = ((NeighborUpdate) msg.getPayload()).getAddressRight();
+					tankModel.updateNeighbors(((NeighborUpdate) msg.getPayload()).getAddressLeft(), ((NeighborUpdate) msg.getPayload()).getAddressRight());
 				}
 
 			}

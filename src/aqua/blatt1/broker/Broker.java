@@ -70,32 +70,61 @@ public class Broker {
     }
 
     private void register(Message msg) {
-        InetSocketAddress inetSocketRight;
-        InetSocketAddress inetSocketLeft;
+        /*InetSocketAddress rightNeighborSocket;
+        InetSocketAddress initalRightNeighborSocket;
+
+        InetSocketAddress leftNeighborSocket;
+        InetSocketAddress initialLeftNeighborSocket;*/
+
         String id = "tank"+(count++);
         client.add( id, msg.getSender());
+        Neighbor neighbor = new Neighbor(id);
 
-        inetSocketRight = (InetSocketAddress) client.getRightNeighorOf(client.indexOf(id));
-        inetSocketLeft = (InetSocketAddress) client.getLeftNeighorOf(client.indexOf(id));
+
+        InetSocketAddress newClientAddress = (InetSocketAddress) client.getClient(client.indexOf(id));
+
+        /*rightNeighborSocket = (InetSocketAddress) client.getRightNeighorOf(client.indexOf(id));
+        leftNeighborSocket = (InetSocketAddress) client.getLeftNeighorOf(client.indexOf(id));
+
+        int indexRightNeighborOfRightNeighbor = client.indexOf(client.getRightNeighorOf(client.indexOf(id)));
+        initalRightNeighborSocket = (InetSocketAddress) client.getRightNeighorOf(indexRightNeighborOfRightNeighbor);
+
+        int indexLeftNeighborOfLeftNeighbor = client.indexOf(client.getLeftNeighorOf(client.indexOf(id)));
+        initialLeftNeighborSocket = (InetSocketAddress) client.getLeftNeighorOf(indexLeftNeighborOfLeftNeighbor);*/
+
+
+
+        if (/*newClientAddress == inetSocketLeft && newClientAddress ==inetSocketRight*/ client.size()==1) {
+            endpoint.send(msg.getSender(), new NeighborUpdate(newClientAddress, newClientAddress));
+        }
+        else {
+            /*endpoint.send(rightNeighborSocket, new NeighborUpdate(initalRightNeighborSocket ,newClientAddress));
+            endpoint.send(leftNeighborSocket, new NeighborUpdate(newClientAddress, initialLeftNeighborSocket));
+            endpoint.send(newClientAddress, new NeighborUpdate(rightNeighborSocket, leftNeighborSocket));*/
+
+            endpoint.send(neighbor.getRightNeighborSocket(), new NeighborUpdate(neighbor.getInitialRightNeighborSocket() ,newClientAddress));
+            endpoint.send(neighbor.getLeftNeighborSocket(), new NeighborUpdate(newClientAddress, neighbor.getInitialLeftNeighborSocket()));
+            endpoint.send(newClientAddress, new NeighborUpdate(neighbor.getRightNeighborSocket(), neighbor.getLeftNeighborSocket()));
+        }
 
         endpoint.send(msg.getSender(), new RegisterResponse(id));
-        endpoint.send(msg.getSender(), new NeighborUpdate(inetSocketRight, inetSocketLeft));
     }
 
     private void deregister(Message msg) {
-
         String removeID = ((DeregisterRequest) msg.getPayload()).getId();
-        InetSocketAddress inetSocketRight;
-        InetSocketAddress inetSocketRightRigth;
+        Neighbor neighbor = new Neighbor(removeID);
+
+        /*InetSocketAddress inetSocketRight;
+        InetSocketAddress inetSocketRightRight;
 
         InetSocketAddress inetSocketLeft;
-        InetSocketAddress inetSocketLeftLeft;
+        InetSocketAddress inetSocketLeftLeft;*/
 
-        inetSocketRight = (InetSocketAddress) client.getRightNeighorOf(client.indexOf(removeID));
+        /*inetSocketRight = (InetSocketAddress) client.getRightNeighorOf(client.indexOf(removeID));
         inetSocketLeft = (InetSocketAddress) client.getLeftNeighorOf(client.indexOf(removeID));
 
         int indexRightNeighborOfRightNeighbor = client.indexOf(client.getRightNeighorOf(client.indexOf(removeID)));
-        inetSocketRightRigth = (InetSocketAddress) client.getRightNeighorOf(indexRightNeighborOfRightNeighbor);
+        inetSocketRightRight = (InetSocketAddress) client.getRightNeighorOf(indexRightNeighborOfRightNeighbor);
 
         int indexLeftNeighborOfLeftNeighbor = client.indexOf(client.getLeftNeighorOf(client.indexOf(removeID)));
         inetSocketLeftLeft = (InetSocketAddress) client.getLeftNeighorOf(indexLeftNeighborOfLeftNeighbor);
@@ -103,10 +132,14 @@ public class Broker {
         System.out.println(inetSocketLeft);
         System.out.println(inetSocketRight);
         System.out.println(inetSocketLeftLeft);
-        System.out.println(inetSocketRightRigth);
+        System.out.println(inetSocketRightRight);
 
-        endpoint.send(inetSocketRight, new NeighborUpdate(inetSocketRightRigth,inetSocketLeft));
-        endpoint.send(inetSocketLeft, new NeighborUpdate(inetSocketRight, inetSocketLeftLeft));
+        endpoint.send(inetSocketRight, new NeighborUpdate(inetSocketRightRight, inetSocketLeft));
+        endpoint.send(inetSocketLeft, new NeighborUpdate(inetSocketRight, inetSocketLeftLeft));*/
+
+        endpoint.send(neighbor.getRightNeighborSocket(), new NeighborUpdate(neighbor.getInitialRightNeighborSocket(),
+                neighbor.getLeftNeighborSocket()));
+        endpoint.send(neighbor.getLeftNeighborSocket(), new NeighborUpdate(neighbor.getRightNeighborSocket(), neighbor.getInitialLeftNeighborSocket()));
         client.remove(client.indexOf(removeID));
     }
 
@@ -125,5 +158,40 @@ public class Broker {
 
         endpoint.send(neighborReceiver, handoffRequest);
     }
+
+    final class Neighbor {
+        private String id;
+
+        public Neighbor(String id) {
+            this.id = id;
+        }
+
+        public InetSocketAddress getRightNeighborSocket() {
+            InetSocketAddress rightNeighborSocket;
+            rightNeighborSocket = (InetSocketAddress) client.getRightNeighorOf(client.indexOf(id));
+            return rightNeighborSocket;
+        }
+
+        public InetSocketAddress getInitialRightNeighborSocket() {
+            InetSocketAddress initialRightNeighborSocket;
+            int indexInitalRightNeighborSocket = client.indexOf(client.getRightNeighorOf(client.indexOf(id)));
+            initialRightNeighborSocket = (InetSocketAddress) client.getRightNeighorOf(indexInitalRightNeighborSocket);
+            return initialRightNeighborSocket;
+        }
+
+        public InetSocketAddress getLeftNeighborSocket() {
+            InetSocketAddress leftNeighborSocket;
+            leftNeighborSocket = (InetSocketAddress) client.getLeftNeighorOf(client.indexOf(id));
+            return leftNeighborSocket;
+        }
+
+        public InetSocketAddress getInitialLeftNeighborSocket() {
+            InetSocketAddress initialLeftNeighborSocket;
+            int indexInitialLeftNeighborSocket = client.indexOf(client.getLeftNeighorOf(client.indexOf(id)));
+            initialLeftNeighborSocket = (InetSocketAddress) client.getLeftNeighorOf(indexInitialLeftNeighborSocket);
+            return initialLeftNeighborSocket;
+        }
+    }
+
 
 }
