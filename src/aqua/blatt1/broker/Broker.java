@@ -19,11 +19,11 @@ public class Broker {
 
     int NUMTHREADS = 5;
     int count;
-    boolean stopRequested = false;
+    volatile boolean stopRequested = false;
     Endpoint endpoint = new Endpoint(4711);
     ClientCollection client = new ClientCollection();
     ExecutorService executor = Executors.newFixedThreadPool(NUMTHREADS);
-    ReadWriteLock lock = new ReentrantReadWriteLock( ) ;
+    ReadWriteLock lock = new ReentrantReadWriteLock();
 
     private class BrokerTask {
         public void brokerTask (Message msg) {
@@ -35,7 +35,7 @@ public class Broker {
                 synchronized (client) {deregister(msg);}
             }
 
-            lock.writeLock().lock();
+            //lock.writeLock().lock();
             if (msg.getPayload() instanceof HandoffRequest) {
                 lock.writeLock().lock();
                 HandoffRequest handoffRequest = (HandoffRequest) msg.getPayload();
@@ -68,6 +68,7 @@ public class Broker {
             BrokerTask brokerTask = new BrokerTask();
             executor.execute(() -> brokerTask.brokerTask(msg));
         }
+        executor.shutdown();
     }
 
     private void register(Message msg) {
