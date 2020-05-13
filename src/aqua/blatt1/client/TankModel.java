@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit;
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
 import aqua.blatt1.common.msgtypes.Token;
+import messaging.Endpoint;
 
 public class TankModel extends Observable implements Iterable<FishModel> {
 	public static final int WIDTH = 600;
