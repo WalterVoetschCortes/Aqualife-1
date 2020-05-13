@@ -48,6 +48,9 @@ public class ClientCommunicator {
 			//endpoint.send(broker, new HandoffRequest(fish));
 
 		}
+		public void sendToken (InetSocketAddress receiver, Token token) {
+			endpoint.send(receiver, token);
+		}
 	}
 
 	public class ClientReceiver extends Thread {
@@ -74,6 +77,10 @@ public class ClientCommunicator {
 					tankModel.updateNeighbors(((NeighborUpdate) msg.getPayload()).getAddressLeft(), ((NeighborUpdate) msg.getPayload()).getAddressRight());
 				}
 
+				if (msg.getPayload() instanceof Token) {
+					tankModel.receiveToken((Token) msg.getPayload());
+				}
+
 			}
 			System.out.println("Receiver stopped.");
 		}
@@ -86,5 +93,7 @@ public class ClientCommunicator {
 	public ClientReceiver newClientReceiver(TankModel tankModel) {
 		return new ClientReceiver(tankModel);
 	}
+
+
 
 }

@@ -96,6 +96,7 @@ public class Broker {
 
         if (/*newClientAddress == inetSocketLeft && newClientAddress ==inetSocketRight*/ client.size()==1) {
             endpoint.send(msg.getSender(), new NeighborUpdate(newClientAddress, newClientAddress));
+            endpoint.send(msg.getSender(), new Token());
         }
         else {
             /*endpoint.send(rightNeighborSocket, new NeighborUpdate(initalRightNeighborSocket ,newClientAddress));
