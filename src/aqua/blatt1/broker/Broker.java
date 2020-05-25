@@ -138,9 +138,13 @@ public class Broker {
         endpoint.send(inetSocketRight, new NeighborUpdate(inetSocketRightRight, inetSocketLeft));
         endpoint.send(inetSocketLeft, new NeighborUpdate(inetSocketRight, inetSocketLeftLeft));*/
 
-        endpoint.send(neighbor.getRightNeighborSocket(), new NeighborUpdate(neighbor.getInitialRightNeighborSocket(),
-                neighbor.getLeftNeighborSocket()));
-        endpoint.send(neighbor.getLeftNeighborSocket(), new NeighborUpdate(neighbor.getRightNeighborSocket(), neighbor.getInitialLeftNeighborSocket()));
+        if (client.size() == 2) {
+            endpoint.send(neighbor.getRightNeighborSocket(), new NeighborUpdate(neighbor.getLeftNeighborSocket(),
+                    neighbor.getLeftNeighborSocket()));
+        } else {
+            endpoint.send(neighbor.getRightNeighborSocket(), new NeighborUpdate(neighbor.getInitialRightNeighborSocket(), neighbor.getLeftNeighborSocket()));
+            endpoint.send(neighbor.getLeftNeighborSocket(), new NeighborUpdate(neighbor.getRightNeighborSocket(), neighbor.getInitialLeftNeighborSocket()));
+        }
         client.remove(client.indexOf(removeID));
     }
 
