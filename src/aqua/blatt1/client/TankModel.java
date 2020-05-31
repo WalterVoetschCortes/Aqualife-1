@@ -251,6 +251,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
         for(FishModel fish : this.fishies) {
             if (fish.getId().equals(fishID)) {
                 fish.toggle();
+                System.out.println("test");
             }
         }
     }
