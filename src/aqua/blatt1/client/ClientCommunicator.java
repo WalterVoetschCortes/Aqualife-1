@@ -59,6 +59,10 @@ public class ClientCommunicator {
 		public void sendCollector (InetSocketAddress receiver, Collector collector) {
 			endpoint.send(receiver, collector);
 		}
+
+		public void sendLocationRequest(InetSocketAddress receiver, LocationRequest locationRequest) {
+			endpoint.send(receiver, locationRequest);
+		}
 	}
 
 	public class ClientReceiver extends Thread {
@@ -95,6 +99,10 @@ public class ClientCommunicator {
 
 				if (msg.getPayload() instanceof Collector) {
 					tankModel.onReceiveCollector((Collector) msg.getPayload());
+				}
+
+				if (msg.getPayload() instanceof LocationRequest) {
+					tankModel.locateFishGlobally( ((LocationRequest) msg.getPayload()).getFishID());
 				}
 
 			}

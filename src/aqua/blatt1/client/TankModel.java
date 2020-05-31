@@ -8,9 +8,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import aqua.blatt1.common.Direction;
+import aqua.blatt1.common.FishLocation;
 import aqua.blatt1.common.FishModel;
 import aqua.blatt1.common.RecordsState;
 import aqua.blatt1.common.msgtypes.Collector;
+import aqua.blatt1.common.msgtypes.LocationRequest;
 import aqua.blatt1.common.msgtypes.SnapshotMarker;
 import aqua.blatt1.common.msgtypes.Token;
 import messaging.Endpoint;
@@ -38,6 +40,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
     protected int counter = 0;
     Timer timer = new Timer();
     ExecutorService executor = Executors.newFixedThreadPool(NUMTHREADS);
+    Map<String, FishLocation> fishLocationHashMap = new HashMap<>();
 
     public TankModel(ClientCommunicator.ClientForwarder forwarder) {
         this.fishies = Collections.newSetFromMap(new ConcurrentHashMap<FishModel, Boolean>());
@@ -59,6 +62,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
                     rand.nextBoolean() ? Direction.LEFT : Direction.RIGHT);
 
             fishies.add(fish);
+            fishLocationHashMap.put(fish.getId(), FishLocation.HERE);
         }
     }
 
@@ -68,6 +72,7 @@ public class TankModel extends Observable implements Iterable<FishModel> {
         }
         fish.setToStart();
         fishies.add(fish);
+        fishLocationHashMap.put(fish.getId(), FishLocation.HERE);
     }
 
     public String getId() {
@@ -91,8 +96,14 @@ public class TankModel extends Observable implements Iterable<FishModel> {
             if (fish.hitsEdge())
                 hasToken(fish);
 
-            if (fish.disappears())
+            if (fish.disappears()) {
+                if (fish.getDirection() == Direction.LEFT) {
+                    fishLocationHashMap.put(fish.getId(), FishLocation.LEFT);
+                } else if (fish.getDirection() == Direction.RIGHT) {
+                    fishLocationHashMap.put(fish.getId(), FishLocation.RIGHT);
+                }
                 it.remove();
+            }
         }
     }
 
@@ -223,5 +234,24 @@ public class TankModel extends Observable implements Iterable<FishModel> {
         }
     }
 
+    public void locateFishGlobally(String fishID) {
+        FishLocation fishLocation = fishLocationHashMap.get(fishID);
+        if (fishLocation == FishLocation.HERE) {
+            locateFishLocally(fishID);
+        } else {
+            if (fishLocation == FishLocation.LEFT) {
+                forwarder.sendLocationRequest(leftNeighbor, new LocationRequest(fishID));
+            } else {
+                forwarder.sendLocationRequest(rightNeighbor, new LocationRequest(fishID));
+            }
+        }
+    }
 
+    private void locateFishLocally(String fishID) {
+        for(FishModel fish : this.fishies) {
+            if (fish.getId().equals(fishID)) {
+                fish.toggle();
+            }
+        }
+    }
 }
