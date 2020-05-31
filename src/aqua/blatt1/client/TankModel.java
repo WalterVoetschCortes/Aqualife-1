@@ -254,11 +254,4 @@ public class TankModel extends Observable implements Iterable<FishModel> {
             }
         }
     }
-    /*private void upadteFishLocation(FishModel fish) {
-        if(homeAgentHashMap.containsKey(fish.getId())) {
-            homeAgentHashMap.put(fish.getId(), null);
-        } else {
-
-        }
-    }*/
 }
