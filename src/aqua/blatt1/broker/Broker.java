@@ -9,6 +9,8 @@ import messaging.Message;
 import javax.swing.*;
 import java.net.InetSocketAddress;
 import java.sql.SQLOutput;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -22,6 +24,7 @@ public class Broker {
     ClientCollection client = new ClientCollection();
     ExecutorService executor = Executors.newFixedThreadPool(NUMTHREADS);
     ReadWriteLock lock = new ReentrantReadWriteLock();
+    Map<String, InetSocketAddress>nameSpace = new HashMap();
 
     private class BrokerTask {
         public void brokerTask (Message msg) {
@@ -43,6 +46,10 @@ public class Broker {
             }
             if (msg.getPayload() instanceof PoisonPill) {
                 System.exit(0);
+            }
+
+            if (msg.getPayload() instanceof NameResolutionRequest) {
+
             }
         }
     }
@@ -79,7 +86,7 @@ public class Broker {
         String id = "tank"+(count++);
         client.add( id, msg.getSender());
         Neighbor neighbor = new Neighbor(id);
-
+        nameSpace.put(id, msg.getSender());
 
         InetSocketAddress newClientAddress = (InetSocketAddress) client.getClient(client.indexOf(id));
 

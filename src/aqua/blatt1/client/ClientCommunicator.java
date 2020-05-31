@@ -105,6 +105,10 @@ public class ClientCommunicator {
 					tankModel.locateFishGlobally( ((LocationRequest) msg.getPayload()).getFishID());
 				}
 
+				if (msg.getPayload() instanceof NameResolutionResponse) {
+
+				}
+
 			}
 			System.out.println("Receiver stopped.");
 		}

@@ -192,16 +192,16 @@ public class TankModel extends Observable implements Iterable<FishModel> {
     public void receiveSnapshotMarker(InetSocketAddress sender, SnapshotMarker snapshotMarker) {
         if (record == RecordsState.IDLE) {
             localFhishies = fishies.size();
-			if (!leftNeighbor.equals(rightNeighbor)) {
+            if (!leftNeighbor.equals(rightNeighbor)) {
                 if (sender.equals(leftNeighbor)) {
                     record = RecordsState.RIGHT;
                 } else if (sender.equals(rightNeighbor)) {
                     record = RecordsState.LEFT;
                 }
             } else {
-			    record = RecordsState.BOTH;
+                record = RecordsState.BOTH;
             }
-			if (leftNeighbor.equals(rightNeighbor)) {
+            if (leftNeighbor.equals(rightNeighbor)) {
                 forwarder.sendSnapshotMarker(leftNeighbor, snapshotMarker);
             } else {
                 forwarder.sendSnapshotMarker(leftNeighbor, snapshotMarker);
@@ -254,4 +254,11 @@ public class TankModel extends Observable implements Iterable<FishModel> {
             }
         }
     }
+    /*private void upadteFishLocation(FishModel fish) {
+        if(homeAgentHashMap.containsKey(fish.getId())) {
+            homeAgentHashMap.put(fish.getId(), null);
+        } else {
+
+        }
+    }*/
 }
