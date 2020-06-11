@@ -45,9 +45,17 @@ public class TankModel extends Observable implements Iterable<FishModel> {
     }
 
 
-    synchronized void onRegistration(String id) {
+    synchronized void onRegistration(String id, int leasLength) {
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                forwarder.register();
+            }
+        },leasLength*1000);
+        if (fishCounter == 0) {
+            newFish(WIDTH - FishModel.getXSize(), rand.nextInt(HEIGHT - FishModel.getYSize()));
+        }
         this.id = id;
-        newFish(WIDTH - FishModel.getXSize(), rand.nextInt(HEIGHT - FishModel.getYSize()));
     }
 
     public synchronized void newFish(int x, int y) {
@@ -258,5 +266,10 @@ public class TankModel extends Observable implements Iterable<FishModel> {
 
     public void updateCurrentLocation(String fishID, InetSocketAddress currentLocation) {
         homeAgent.put(fishID, currentLocation);
+    }
+
+    public void leasingRunOut() {
+        forwarder.deregister(id);
+        System.exit(0);
     }
 }
