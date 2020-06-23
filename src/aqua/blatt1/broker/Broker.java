@@ -3,11 +3,16 @@ package aqua.blatt1.broker;
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
 import aqua.blatt1.common.msgtypes.*;
+import aqua.blatt1.endpoint.SecureEndpoint;
 import messaging.Endpoint;
 import messaging.Message;
 
+
+import javax.crypto.NoSuchPaddingException;
 import javax.swing.*;
 import java.net.InetSocketAddress;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -22,12 +27,15 @@ public class Broker {
     int count;
     int leaseLength = 10;
     volatile boolean stopRequested = false;
-    Endpoint endpoint = new Endpoint(4711);
+    SecureEndpoint endpoint;
     ClientCollection client = new ClientCollection();
     ExecutorService executor = Executors.newFixedThreadPool(NUMTHREADS);
     ReadWriteLock lock = new ReentrantReadWriteLock();
     Timer timer = new Timer();
 
+    public Broker() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
+        endpoint = new SecureEndpoint(4711);
+    }
     private class BrokerTask {
         public void brokerTask(Message msg) {
             if (msg.getPayload() instanceof RegisterRequest) {
@@ -63,7 +71,7 @@ public class Broker {
         }
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
         Broker broker = new Broker();
         broker.broker();
     }
@@ -73,10 +81,10 @@ public class Broker {
             @Override
             public void run() {
                 System.out.println("Ich gehe hier rein");
-                Date timestamp = new Date();
                 System.out.println(client.size());
                 if (client.size() > 0) {
                     for (int i = 0; i < client.size(); i++) {
+                        Date timestamp = new Date();
                         Date tempTimestamp = client.getTimestamp(i);
                         System.out.println(tempTimestamp);
                         long leasingTime = timestamp.getTime() - tempTimestamp.getTime();
