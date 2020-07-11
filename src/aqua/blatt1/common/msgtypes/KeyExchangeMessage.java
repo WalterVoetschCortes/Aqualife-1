@@ -10,7 +10,7 @@ public class KeyExchangeMessage implements Serializable {
         this.publicKey=publicKey;
     }
 
-    public PublicKey getPublicKey() {
+    public PublicKey getKey() {
         return publicKey;
     }
 }
