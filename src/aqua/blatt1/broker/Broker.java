@@ -1,7 +1,9 @@
 package aqua.blatt1.broker;
 
+import aqua.blatt1.client.AquaClient;
 import aqua.blatt1.common.Direction;
 import aqua.blatt1.common.FishModel;
+import aqua.blatt1.common.Properties;
 import aqua.blatt1.common.msgtypes.*;
 import aqua.blatt1.endpoint.SecureEndpoint;
 import messaging.Endpoint;
@@ -11,6 +13,9 @@ import messaging.Message;
 import javax.crypto.NoSuchPaddingException;
 import javax.swing.*;
 import java.net.InetSocketAddress;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Date;
@@ -20,8 +25,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.rmi.*;
 
-public class Broker {
+public class Broker implements AquaBroker{
 
     int NUMTHREADS = 5;
     int count;
@@ -33,129 +39,77 @@ public class Broker {
     ReadWriteLock lock = new ReentrantReadWriteLock();
     Timer timer = new Timer();
 
-    public Broker() throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
-        endpoint = new SecureEndpoint(4711);
-    }
-    private class BrokerTask {
-        public void brokerTask(Message msg) {
-            if (msg.getPayload() instanceof RegisterRequest) {
-                synchronized (client) {
-                    register(msg);
-                }
-            }
-
-            if (msg.getPayload() instanceof DeregisterRequest) {
-                synchronized (client) {
-                    deregister(msg);
-                }
-            }
-
-            //lock.writeLock().lock();
-            if (msg.getPayload() instanceof HandoffRequest) {
-                lock.writeLock().lock();
-                HandoffRequest handoffRequest = (HandoffRequest) msg.getPayload();
-                InetSocketAddress inetSocketAddress = msg.getSender();
-                handOffFish(handoffRequest, inetSocketAddress);
-                lock.writeLock().unlock();
-            }
-            if (msg.getPayload() instanceof PoisonPill) {
-                System.exit(0);
-            }
-
-            if (msg.getPayload() instanceof NameResolutionRequest) {
-                String TankID = ((NameResolutionRequest) msg.getPayload()).getTankID();
-                String RequestID = ((NameResolutionRequest) msg.getPayload()).getRequestID();
-                InetSocketAddress sender = msg.getSender();
-                sendInetSocketResponse(TankID, RequestID, sender);
-            }
-        }
+    public Broker() {
+        endpoint = new SecureEndpoint(Properties.PORT);
+        client = new ClientCollection();
+        executor = Executors.newFixedThreadPool(NUMTHREADS);
     }
 
-    public static void main(String[] args) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
+
+    public static void main(String[] args) throws RemoteException, AlreadyBoundException{
         Broker broker = new Broker();
-        broker.broker();
+        Registry registry = LocateRegistry.createRegistry(Registry.REGISTRY_PORT);
+        AquaBroker stub = (AquaBroker) UnicastRemoteObject.exportObject(broker, 0);
+        registry.bind(Properties.BROKER_NAME, stub);
     }
 
-    public void broker() {
-        timer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                System.out.println("Ich gehe hier rein");
-                System.out.println(client.size());
-                if (client.size() > 0) {
-                    for (int i = 0; i < client.size(); i++) {
-                        Date timestamp = new Date();
-                        Date tempTimestamp = client.getTimestamp(i);
-                        System.out.println(tempTimestamp);
-                        long leasingTime = timestamp.getTime() - tempTimestamp.getTime();
-                        System.out.println(leasingTime);
-                        if (leasingTime > 10 * 1000) {
-                            endpoint.send((InetSocketAddress) client.getClient(i), new LeasingRunOut());
-                        }
-                    }
-                }
 
-
-            }
-        }, 0, 3 * 1000);
-
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                JOptionPane.showMessageDialog(null, "Press OK button to stop server");
-                stopRequested = true;
-            }
-        });
-
-        while (!stopRequested) {
-            Message msg = endpoint.blockingReceive();
-            BrokerTask brokerTask = new BrokerTask();
-            executor.execute(() -> brokerTask.brokerTask(msg));
-        }
-        executor.shutdown();
-
-    }
-
-    private void register(Message msg) {
+    public void register(AquaClient aquaClient) throws RemoteException, AlreadyBoundException{
+        int ClientIndex = client.indexOf(aquaClient);
         Date timestamp = new Date();
-        if (client.indexOf(msg.getSender()) == -1) {
-            String id = "tank" + (count++);
-            client.add(id, msg.getSender(), timestamp);
-            Neighbor neighbor = new Neighbor(id);
+        String id;
 
-            InetSocketAddress newClientAddress = (InetSocketAddress) client.getClient(client.indexOf(id));
+        if (ClientIndex == -1) {
+            id = "tank" + (count++);
 
-            if (/*newClientAddress == inetSocketLeft && newClientAddress ==inetSocketRight*/ client.size() == 1) {
-                endpoint.send(msg.getSender(), new NeighborUpdate(newClientAddress, newClientAddress));
-                endpoint.send(msg.getSender(), new Token());
+            Registry registry = LocateRegistry.getRegistry(Registry.REGISTRY_PORT);
+            registry.bind(id, aquaClient);
+
+            client.add(id, aquaClient, timestamp);
+
+            int newTankAddressIndex = client.indexOf(aquaClient);
+            AquaClient leftNeighbor = (AquaClient) client.getLeftNeighorOf(newTankAddressIndex);
+            AquaClient rightNeighbor = (AquaClient) client.getRightNeighorOf(newTankAddressIndex);
+
+            AquaClient leftOfLeftNeighbor = (AquaClient) client.getLeftNeighorOf(client.indexOf(leftNeighbor));
+            AquaClient rightOfRightNeighbor = (AquaClient) client.getRightNeighorOf(client.indexOf(rightNeighbor));
+
+            if (client.size() == 1) {
+                aquaClient.updateNeighbors(aquaClient, aquaClient);
+                aquaClient.receiveToken(new Token());
             } else {
-
-                endpoint.send(neighbor.getRightNeighborSocket(), new NeighborUpdate(neighbor.getInitialRightNeighborSocket(), newClientAddress));
-                endpoint.send(neighbor.getLeftNeighborSocket(), new NeighborUpdate(newClientAddress, neighbor.getInitialLeftNeighborSocket()));
-                endpoint.send(newClientAddress, new NeighborUpdate(neighbor.getRightNeighborSocket(), neighbor.getLeftNeighborSocket()));
+                aquaClient.updateNeighbors(leftNeighbor,rightNeighbor);
+                leftNeighbor.updateNeighbors(leftOfLeftNeighbor, aquaClient);
+                rightNeighbor.updateNeighbors(aquaClient, rightOfRightNeighbor);
             }
-
-            endpoint.send(msg.getSender(), new RegisterResponse(id, leaseLength));
         } else {
             System.out.println("prüfe ob bereits registriert");
-            int index = client.indexOf(msg.getSender());
+            int index = client.indexOf(aquaClient);
             client.setTimestamp(index, timestamp);
-            endpoint.send(msg.getSender(), new RegisterResponse(client.getId(index), leaseLength));
+            id = client.getId(index);
         }
+        aquaClient.onRegistration(id, leaseLength);
     }
 
-    private void deregister(Message msg) {
-        String removeID = ((DeregisterRequest) msg.getPayload()).getId();
-        Neighbor neighbor = new Neighbor(removeID);
+    public void deregister(String id) throws RemoteException, NotBoundException{
+        Registry registry = LocateRegistry.getRegistry(Registry.REGISTRY_PORT);
+        registry.unbind(id);
+
+        AquaClient leftNeighborAddress = (AquaClient) client.getLeftNeighorOf(client.indexOf(id));
+        AquaClient rightNeighborAddress = (AquaClient) client.getRightNeighorOf(client.indexOf(id));
+
+        int leftNeighborIndex = client.indexOf(client.getLeftNeighorOf(client.indexOf(id)));
+        int rightNeighborIndex = client.indexOf(client.getRightNeighorOf(client.indexOf(id)));
+
+        AquaClient leftOfLeftNeighbor = (AquaClient) client.getLeftNeighorOf(leftNeighborIndex);
+        AquaClient rightOfRightNeighbor = (AquaClient) client.getRightNeighorOf(rightNeighborIndex);
 
         if (client.size() == 2) {
-            endpoint.send(neighbor.getRightNeighborSocket(), new NeighborUpdate(neighbor.getLeftNeighborSocket(),
-                    neighbor.getLeftNeighborSocket()));
+            leftNeighborAddress.updateNeighbors(leftNeighborAddress, leftNeighborAddress);
         } else {
-            endpoint.send(neighbor.getRightNeighborSocket(), new NeighborUpdate(neighbor.getInitialRightNeighborSocket(), neighbor.getLeftNeighborSocket()));
-            endpoint.send(neighbor.getLeftNeighborSocket(), new NeighborUpdate(neighbor.getRightNeighborSocket(), neighbor.getInitialLeftNeighborSocket()));
+            leftNeighborAddress.updateNeighbors(leftOfLeftNeighbor, rightNeighborAddress);
+            rightNeighborAddress.updateNeighbors(leftNeighborAddress, rightOfRightNeighbor);
         }
-        client.remove(client.indexOf(removeID));
     }
 
     private void handOffFish(HandoffRequest handoffRequest, InetSocketAddress inetSocketAddress) {
@@ -173,43 +127,10 @@ public class Broker {
         endpoint.send(neighborReceiver, handoffRequest);
     }
 
-    final class Neighbor {
-        private String id;
-
-        public Neighbor(String id) {
-            this.id = id;
-        }
-
-        public InetSocketAddress getRightNeighborSocket() {
-            InetSocketAddress rightNeighborSocket;
-            rightNeighborSocket = (InetSocketAddress) client.getRightNeighorOf(client.indexOf(id));
-            return rightNeighborSocket;
-        }
-
-        public InetSocketAddress getInitialRightNeighborSocket() {
-            InetSocketAddress initialRightNeighborSocket;
-            int indexInitalRightNeighborSocket = client.indexOf(client.getRightNeighorOf(client.indexOf(id)));
-            initialRightNeighborSocket = (InetSocketAddress) client.getRightNeighorOf(indexInitalRightNeighborSocket);
-            return initialRightNeighborSocket;
-        }
-
-        public InetSocketAddress getLeftNeighborSocket() {
-            InetSocketAddress leftNeighborSocket;
-            leftNeighborSocket = (InetSocketAddress) client.getLeftNeighorOf(client.indexOf(id));
-            return leftNeighborSocket;
-        }
-
-        public InetSocketAddress getInitialLeftNeighborSocket() {
-            InetSocketAddress initialLeftNeighborSocket;
-            int indexInitialLeftNeighborSocket = client.indexOf(client.getLeftNeighorOf(client.indexOf(id)));
-            initialLeftNeighborSocket = (InetSocketAddress) client.getLeftNeighorOf(indexInitialLeftNeighborSocket);
-            return initialLeftNeighborSocket;
-        }
-    }
-
-    private void sendInetSocketResponse(String TankID, String RequestID, InetSocketAddress sender) {
-        InetSocketAddress homeClient = (InetSocketAddress) client.getClient(client.indexOf(TankID));
-        endpoint.send(sender, new NameResolutionResponse(homeClient, RequestID));
+    public void handleNameResolutionRequest(String tankId, String id, AquaClient aquaClient) throws RemoteException {
+        int indexOf = client.indexOf(tankId);
+        AquaClient tankAddress = (AquaClient) client.getClient(indexOf);
+        aquaClient.handleNameResolutionResponse(tankAddress, id, aquaClient);
     }
 
 

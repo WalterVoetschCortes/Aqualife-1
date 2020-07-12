@@ -1,21 +1,24 @@
 package aqua.blatt1.client;
 
-import javax.crypto.NoSuchPaddingException;
+import aqua.blatt1.broker.AquaBroker;
+import aqua.blatt1.common.Properties;
+
 import javax.swing.SwingUtilities;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
+import java.rmi.AlreadyBoundException;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 
 public class Aqualife {
+	public static void main(String[] args) throws RemoteException, NotBoundException, AlreadyBoundException {
+		Registry registry = LocateRegistry.getRegistry(Registry.REGISTRY_PORT);
+		AquaBroker aquaBroker = (AquaBroker) registry.lookup(Properties.BROKER_NAME);
 
-	public static void main(String[] args) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException {
-		ClientCommunicator communicator = new ClientCommunicator();
-		TankModel tankModel11 = new TankModel(communicator.newClientForwarder());
+		TankModel tankModel = new TankModel(aquaBroker);
 
-		communicator.newClientReceiver(tankModel11).start();
-
-		SwingUtilities.invokeLater(new AquaGui(tankModel11));
-
-		tankModel11.run();
+		SwingUtilities.invokeLater(new AquaGui(tankModel));
+		tankModel.run();
 	}
 
 }
